@@ -12,13 +12,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Session 1: AI APIs',
+      title: 'Summon AI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0D0D1A),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF7B2FBE),
+          secondary: Color(0xFF4776E6),
+          surface: Color(0xFF1A1A35),
+        ),
         useMaterial3: true,
       ),
-      // Injecting the ViewModel into the View
       home: SummonAIView(viewModel: AIViewModel()),
     );
   }
