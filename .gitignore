@@ -106,3 +106,6 @@ tmp/
 .flutter-plugins
 .flutter-versions
 
+## Environment variables / secrets
+.env
+
