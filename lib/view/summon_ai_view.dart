@@ -5,7 +5,7 @@ import 'package:summon_ai/view_model/ai_view_model.dart';
 class SummonAIView extends StatefulWidget {
   final AIViewModel viewModel;
 
-  const SummonAIView({Key? key, required this.viewModel}) : super(key: key);
+  const SummonAIView({super.key, required this.viewModel});
 
   @override
   State<SummonAIView> createState() => _SummonAIViewState();
@@ -171,7 +171,7 @@ class _SummonAIViewState extends State<SummonAIView>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF7B2FBE).withOpacity(0.5),
+                  color: const Color(0xFF7B2FBE).withValues(alpha: 0.5),
                   blurRadius: 30,
                   spreadRadius: 5,
                 ),
@@ -196,7 +196,7 @@ class _SummonAIViewState extends State<SummonAIView>
           'Tap the button to summon a fresh joke\nstraight from the AI universe.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.55),
+            color: Colors.white.withValues(alpha: 0.55),
             fontSize: 14,
             height: 1.6,
           ),
@@ -234,7 +234,7 @@ class _SummonAIViewState extends State<SummonAIView>
                 ? []
                 : [
                     BoxShadow(
-                      color: const Color(0xFF7B2FBE).withOpacity(0.45),
+                      color: const Color(0xFF7B2FBE).withValues(alpha: 0.45),
                       blurRadius: 25,
                       offset: const Offset(0, 8),
                     ),
@@ -297,7 +297,7 @@ class _SummonAIViewState extends State<SummonAIView>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF2A1020),
-        border: Border.all(color: const Color(0xFFBE2F4A).withOpacity(0.5)),
+        border: Border.all(color: const Color(0xFFBE2F4A).withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -390,13 +390,13 @@ class _JokeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isNew
-              ? const Color(0xFF7B2FBE).withOpacity(0.4)
-              : Colors.white.withOpacity(0.06),
+              ? const Color(0xFF7B2FBE).withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.06),
         ),
         boxShadow: isNew
             ? [
                 BoxShadow(
-                  color: const Color(0xFF7B2FBE).withOpacity(0.15),
+                  color: const Color(0xFF7B2FBE).withValues(alpha: 0.15),
                   blurRadius: 30,
                   offset: const Offset(0, 8),
                 ),
@@ -415,7 +415,7 @@ class _JokeCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7B2FBE).withOpacity(0.2),
+                    color: const Color(0xFF7B2FBE).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.format_quote_rounded,
@@ -426,7 +426,7 @@ class _JokeCard extends StatelessWidget {
                   child: Text(
                     joke.setup,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(isNew ? 0.95 : 0.7),
+                      color: Colors.white.withValues(alpha: isNew ? 0.95 : 0.7),
                       fontSize: isNew ? 16 : 14,
                       fontWeight:
                           isNew ? FontWeight.w600 : FontWeight.w500,
@@ -438,7 +438,7 @@ class _JokeCard extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
-            Divider(color: Colors.white.withOpacity(0.08), height: 1),
+            Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
             const SizedBox(height: 16),
 
             // Punchline or reveal button
@@ -452,7 +452,7 @@ class _JokeCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4776E6).withOpacity(0.2),
+                            color: const Color(0xFF4776E6).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.emoji_emotions_rounded,
@@ -464,7 +464,7 @@ class _JokeCard extends StatelessWidget {
                             joke.punchline,
                             style: TextStyle(
                               color: const Color(0xFFB47EFF)
-                                  .withOpacity(isNew ? 1 : 0.75),
+                                  .withValues(alpha: isNew ? 1 : 0.75),
                               fontSize: isNew ? 15 : 13,
                               fontStyle: FontStyle.italic,
                               height: 1.5,
@@ -481,10 +481,10 @@ class _JokeCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4776E6).withOpacity(0.12),
+                          color: const Color(0xFF4776E6).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: const Color(0xFF4776E6).withOpacity(0.3)),
+                              color: const Color(0xFF4776E6).withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,

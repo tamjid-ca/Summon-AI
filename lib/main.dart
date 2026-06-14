@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:summon_ai/view/summon_ai_view.dart';
+import 'package:summon_ai/view/weather_view.dart';
 import 'package:summon_ai/view_model/ai_view_model.dart';
+import 'package:summon_ai/view_model/weather_view_model.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +29,89 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: SummonAIView(viewModel: AIViewModel()),
+      home: const _RootShell(),
+    );
+  }
+}
+
+class _RootShell extends StatefulWidget {
+  const _RootShell();
+
+  @override
+  State<_RootShell> createState() => _RootShellState();
+}
+
+class _RootShellState extends State<_RootShell> {
+  int _currentIndex = 0;
+
+  final AIViewModel _aiViewModel = AIViewModel();
+  final WeatherViewModel _weatherViewModel = WeatherViewModel();
+
+  static const _navItems = [
+    BottomNavigationBarItem(
+      icon: Icon(Icons.auto_awesome_rounded),
+      activeIcon: Icon(Icons.auto_awesome),
+      label: 'Jokes',
+    ),
+    BottomNavigationBarItem(
+      icon: Icon(Icons.wb_cloudy_outlined),
+      activeIcon: Icon(Icons.wb_cloudy_rounded),
+      label: 'Weather',
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _aiViewModel.dispose();
+    _weatherViewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D1A),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          SummonAIView(viewModel: _aiViewModel),
+          WeatherView(viewModel: _weatherViewModel),
+        ],
+      ),
+      bottomNavigationBar: _buildNavBar(),
+    );
+  }
+
+  Widget _buildNavBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D0D1A),
+        border: Border(
+          top: BorderSide(
+              color: Colors.white.withValues(alpha: 0.07), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        selectedItemColor: const Color(0xFF4776E6),
+        unselectedItemColor: const Color(0xFF6B6B8A),
+        selectedLabelStyle: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        items: _navItems,
+      ),
     );
   }
 }
