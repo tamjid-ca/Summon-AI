@@ -2,14 +2,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:summon_ai/model/ai_model.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AIViewModel extends ChangeNotifier {
 
-  final model = GenerativeModel(
-    model: 'gemini-2.5-flash',
-    apiKey: const String.fromEnvironment('GEMINI_API_KEY'),
-  );
+  GenerativeModel? _model;
+  GenerativeModel get model {
+    _model ??= GenerativeModel(
+      model: 'gemini-2.5-flash',
+      apiKey: dotenv.env['GEMINI_API_KEY'] ?? const String.fromEnvironment('GEMINI_API_KEY'),
+    );
+    return _model!;
+  }
 
   bool isLoading = false;
   String? errorMessage;
