@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:summon_ai/model/weather_model.dart';
+import 'package:summon_ai/service/user_data_service.dart';
 import 'package:summon_ai/service/weather_service.dart';
 
 class WeatherViewModel extends ChangeNotifier {
   final WeatherService _service = WeatherService();
+  final UserDataService _userDataService = UserDataService();
 
   bool isLoadingCurrent = false;
   bool isLoadingSearch = false;
@@ -15,6 +18,20 @@ class WeatherViewModel extends ChangeNotifier {
 
   /// History of searched locations (newest first)
   final List<WeatherModel> savedLocations = [];
+
+  Future<void> loadUserHistory() async {
+    try {
+      final searches = await _userDataService.loadWeatherSearches();
+      savedLocations
+        ..clear()
+        ..addAll(searches);
+      searchedWeather = savedLocations.isNotEmpty ? savedLocations.first : null;
+      notifyListeners();
+    } catch (_) {
+      searchErrorMessage = 'Could not load saved weather searches.';
+      notifyListeners();
+    }
+  }
 
   // ──────────────────────────────────────────────
   // Current Location
@@ -60,6 +77,7 @@ class WeatherViewModel extends ChangeNotifier {
         (w) => w.location.name.toLowerCase() == weather.location.name.toLowerCase(),
       );
       savedLocations.insert(0, weather);
+      unawaited(_userDataService.saveWeatherSearch(weather));
 
       // Keep at most 10 saved locations
       if (savedLocations.length > 10) savedLocations.removeLast();
@@ -83,6 +101,7 @@ class WeatherViewModel extends ChangeNotifier {
     savedLocations.clear();
     searchedWeather = null;
     searchErrorMessage = null;
+    unawaited(_userDataService.clearWeatherSearches());
     notifyListeners();
   }
 

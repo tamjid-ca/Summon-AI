@@ -1,10 +1,19 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:summon_ai/model/weather_model.dart';
 import 'package:summon_ai/view_model/weather_view_model.dart';
 
 class WeatherView extends StatefulWidget {
   final WeatherViewModel viewModel;
-  const WeatherView({super.key, required this.viewModel});
+  final User user;
+  final Future<void> Function() onSignOut;
+
+  const WeatherView({
+    super.key,
+    required this.viewModel,
+    required this.user,
+    required this.onSignOut,
+  });
 
   @override
   State<WeatherView> createState() => _WeatherViewState();
@@ -162,6 +171,19 @@ class _WeatherViewState extends State<WeatherView>
         ],
       ),
       actions: [
+        Tooltip(
+          message: widget.user.email ?? 'Signed in',
+          child: CircleAvatar(
+            radius: 14,
+            backgroundImage: widget.user.photoURL == null
+                ? null
+                : NetworkImage(widget.user.photoURL!),
+            child: widget.user.photoURL == null
+                ? const Icon(Icons.person, size: 16)
+                : null,
+          ),
+        ),
+        const SizedBox(width: 4),
         if (widget.viewModel.savedLocations.isNotEmpty)
           IconButton(
             onPressed: widget.viewModel.clearSavedLocations,
@@ -169,6 +191,12 @@ class _WeatherViewState extends State<WeatherView>
                 color: Color(0xFFB0B0C8)),
             tooltip: 'Clear search history',
           ),
+        IconButton(
+          onPressed: widget.onSignOut,
+          icon: const Icon(Icons.logout_rounded,
+              color: Color(0xFFB0B0C8)),
+          tooltip: 'Sign out',
+        ),
         const SizedBox(width: 8),
       ],
     );

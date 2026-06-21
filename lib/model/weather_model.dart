@@ -28,6 +28,18 @@ class WeatherLocation {
       lon: double.tryParse(json['lon']?.toString() ?? '0') ?? 0,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'country': country,
+      'region': region,
+      'localtime': localtime,
+      'timezone_id': timezoneId,
+      'lat': lat,
+      'lon': lon,
+    };
+  }
 }
 
 class WeatherCurrent {
@@ -81,6 +93,23 @@ class WeatherCurrent {
 
   String get primaryIcon =>
       weatherIcons.isNotEmpty ? weatherIcons.first : '';
+
+  Map<String, dynamic> toMap() {
+    return {
+      'temperature': temperature,
+      'feelslike': feelslike,
+      'humidity': humidity,
+      'wind_speed': windSpeed,
+      'wind_dir': windDir,
+      'uv_index': uvIndex,
+      'visibility': visibility,
+      'cloudcover': cloudcover,
+      'pressure': pressure,
+      'is_day': isDay ? 'yes' : 'no',
+      'weather_descriptions': weatherDescriptions,
+      'weather_icons': weatherIcons,
+    };
+  }
 }
 
 class WeatherModel {
@@ -94,5 +123,12 @@ class WeatherModel {
       location: WeatherLocation.fromJson(json['location'] ?? {}),
       current: WeatherCurrent.fromJson(json['current'] ?? {}),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'location': location.toMap(),
+      'current': current.toMap(),
+    };
   }
 }

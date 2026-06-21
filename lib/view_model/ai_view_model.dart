@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:summon_ai/model/ai_model.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:summon_ai/service/user_data_service.dart';
 
 class AIViewModel extends ChangeNotifier {
+  final UserDataService _userDataService = UserDataService();
 
   final model = GenerativeModel(
     model: 'gemini-2.5-flash',
@@ -17,6 +20,20 @@ class AIViewModel extends ChangeNotifier {
   AIResponseModel? currentJoke;
 
   final List<AIResponseModel> jokeHistory = [];
+
+  Future<void> loadUserHistory() async {
+    try {
+      final jokes = await _userDataService.loadJokes();
+      jokeHistory
+        ..clear()
+        ..addAll(jokes);
+      currentJoke = jokeHistory.isNotEmpty ? jokeHistory.first : null;
+      notifyListeners();
+    } catch (_) {
+      errorMessage = 'Could not load saved jokes.';
+      notifyListeners();
+    }
+  }
 
   // =========================
   // RANDOM JOKE API (OLD FEATURE)
@@ -39,6 +56,7 @@ class AIViewModel extends ChangeNotifier {
 
         currentJoke = aiData;
         jokeHistory.insert(0, aiData);
+        unawaited(_userDataService.saveJoke(aiData));
       } else {
         errorMessage =
             'Server error (${response.statusCode}). Please try again.';
@@ -73,6 +91,7 @@ class AIViewModel extends ChangeNotifier {
 
       currentJoke = aiData;
       jokeHistory.insert(0, aiData);
+      unawaited(_userDataService.saveJoke(aiData));
 
     } catch (e) {
       errorMessage = "Gemini error: $e";
@@ -89,6 +108,7 @@ class AIViewModel extends ChangeNotifier {
     currentJoke = null;
     jokeHistory.clear();
     errorMessage = null;
+    unawaited(_userDataService.clearJokes());
     notifyListeners();
   }
 }
