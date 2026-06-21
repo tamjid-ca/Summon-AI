@@ -8,9 +8,11 @@ import 'package:summon_ai/service/user_data_service.dart';
 import 'package:summon_ai/view/gemini_chat_view.dart';
 import 'package:summon_ai/view/summon_ai_view.dart';
 import 'package:summon_ai/view/weather_view.dart';
+import 'package:summon_ai/view/gemini_chat_overlay.dart';
 import 'package:summon_ai/view_model/ai_view_model.dart';
 import 'package:summon_ai/view_model/chat_view_model.dart';
 import 'package:summon_ai/view_model/weather_view_model.dart';
+import 'package:summon_ai/view_model/gemini_chat_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -254,6 +256,7 @@ class _RootShell extends StatefulWidget {
 class _RootShellState extends State<_RootShell> {
   int _currentIndex = 0;
   bool _isChatOpen = false;
+  bool _isChatOpen = false;
 
   late final AIViewModel _aiViewModel = AIViewModel()..loadUserHistory();
   late final ChatViewModel _chatViewModel = ChatViewModel();
@@ -278,6 +281,7 @@ class _RootShellState extends State<_RootShell> {
     _aiViewModel.dispose();
     _chatViewModel.dispose();
     _weatherViewModel.dispose();
+    _chatViewModel.dispose();
     super.dispose();
   }
 
