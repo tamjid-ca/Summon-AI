@@ -18,12 +18,10 @@ This project is a Flutter app, so the implementation was added to the existing F
   - camera button,
   - drag-and-drop image attach support,
   - 2 MB maximum image size validation,
-  - Base64 conversion before sending,
-  - image bytes sent to Gemini vision-capable model,
-  - image file uploaded to Firebase Storage,
-  - image metadata and download URL stored in Firestore.
+  - image converted to Base64,
+  - Base64 image data saved in Firestore chunks,
+  - Base64 decoded back to image bytes before sending to Gemini.
 - Added Firestore chat data under each signed-in user.
-- Added Firebase Storage rules so users can only access their own uploaded chat images and uploads are limited to images up to 2 MB.
 - Added Android camera permission for the Gemini chat camera button.
 
 ## New Files
@@ -36,13 +34,11 @@ This project is a Flutter app, so the implementation was added to the existing F
 - `lib/service/chat_session_service.dart`
   - Handles Firestore chat session CRUD.
   - Handles message reads/writes.
-  - Uploads images to Firebase Storage.
+  - Saves and loads Base64 image chunks in Firestore.
 - `lib/view_model/chat_view_model.dart`
   - Coordinates chat UI state, selected session, sending, errors, and image limit validation.
 - `lib/view/gemini_chat_view.dart`
   - Complete chat UI with sidebar, messages, image preview, upload, camera, and drag/drop.
-- `storage.rules`
-  - Firebase Storage access rules for per-user image files with server-side 2 MB image validation.
 - `MIGRATION_AND_CHANGES.md`
   - This teaching and migration guide.
 
@@ -50,7 +46,6 @@ This project is a Flutter app, so the implementation was added to the existing F
 
 - `pubspec.yaml`
   - Added:
-    - `firebase_storage`
     - `image_picker`
     - `desktop_drop`
 - `pubspec.lock`
@@ -59,8 +54,6 @@ This project is a Flutter app, so the implementation was added to the existing F
   - Added `ChatViewModel`.
   - Added floating chat button.
   - Added `GeminiChatPanel` overlay.
-- `firebase.json`
-  - Added Storage rules configuration.
 
 ## Firebase Data Structure
 
@@ -86,25 +79,26 @@ users/{uid}/chatSessions/{sessionId}/messages/{messageId}
     fileName
     mimeType
     sizeBytes
-    storagePath
-    downloadUrl
+    base64ChunkCount
+
+users/{uid}/chatSessions/{sessionId}/messages/{messageId}/imageBase64Chunks/{chunkId}
+  index
+  data
+  createdAt
 ```
 
-Firebase Storage stores image files here:
+## Why Base64 Is Chunked
 
-```text
-users/{uid}/chatSessions/{sessionId}/images/{timestamp}_{fileName}
-```
+Firestore has a document size limit of about 1 MiB. A 2 MB image becomes larger when encoded as Base64, so storing the full Base64 string inside one message document will fail.
 
-## Why Storage Is Used For Images
+To keep the requested Base64 database approach working, the app stores the image like this:
 
-Firestore has a document size limit of about 1 MiB. A 2 MB image becomes even larger when encoded as Base64, so storing the full Base64 string inside Firestore is not safe. The app still converts the selected image to Base64 for local processing, but it stores the actual image file in Firebase Storage and saves only metadata plus the download URL in Firestore.
+- The message document stores image metadata and `base64ChunkCount`.
+- The Base64 string is split into smaller documents in `imageBase64Chunks`.
+- When the image is shown again, the app loads chunks ordered by `index`, joins them, and decodes the Base64 back into image bytes.
+- When sending to Gemini, the selected image is encoded to Base64, then decoded back into bytes and sent with the prompt.
 
-This is the recommended production pattern:
-
-- Firestore stores structured records and metadata.
-- Firebase Storage stores binary files.
-- Security rules keep both scoped to the signed-in user.
+This keeps each Firestore document below the document size limit while still storing the image data in the database.
 
 ## Environment Variables
 
@@ -159,11 +153,7 @@ Firebase Console -> Firestore Database -> Create database.
 
 Use production mode, then deploy the rules from this repo.
 
-6. Enable Firebase Storage.
-
-Firebase Console -> Storage -> Get started.
-
-7. Configure FlutterFire for the student's project.
+6. Configure FlutterFire for the student's project.
 
 Run from the project root:
 
@@ -176,7 +166,7 @@ This regenerates:
 - `lib/firebase_options.dart`
 - `android/app/google-services.json`
 
-8. Add Android debug SHA fingerprints for Google Sign-In.
+7. Add Android debug SHA fingerprints for Google Sign-In.
 
 ```bat
 cd android
@@ -189,16 +179,14 @@ Firebase Console -> Project settings -> Your apps -> Android app -> SHA certific
 
 Download or regenerate `google-services.json` after adding SHA values.
 
-9. Deploy Firestore and Storage rules.
+8. Deploy Firestore rules.
 
 ```bat
 firebase use student-summon-ai
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules
 ```
 
-If Firebase asks for a Storage bucket, choose the default bucket for the student's Firebase project.
-
-10. Install dependencies and run.
+9. Install dependencies and run.
 
 ```bat
 flutter pub get
@@ -210,19 +198,10 @@ flutter run
 
 - `ApiException: 10` during Google Sign-In usually means the Android package name or SHA fingerprints do not match the Firebase Android app.
 - If the app says Firebase setup required, regenerate `lib/firebase_options.dart` with `flutterfire configure`.
-- If chat image upload fails, make sure Firebase Storage is enabled and `storage.rules` is deployed.
-- `firebase_storage/object-not-found` during image chat usually means Firebase Storage is not fully set up for the project/bucket, or the app is using Firebase config from one project while rules/storage were deployed to another. This app currently expects the bucket from `lib/firebase_options.dart`: `gs://summon-ai-class.firebasestorage.app`. Use the dot before `firebasestorage`, not a hyphen. Open Firebase Console -> Storage -> Get started, make sure the bucket is created for project `summon-ai-class`, then run:
-
-```bat
-set PATH=%APPDATA%\npm;%PATH%
-firebase use summon-ai-class
-firebase deploy --only firestore:rules,storage --project=summon-ai-class
-```
-
-After this, stop the app completely and run it again so it reloads the Firebase configuration.
-- If a file larger than 2 MB is uploaded, the app blocks it before upload and Storage rules reject it on the server.
+- If chat image saving fails, make sure Firestore is enabled and `firestore.rules` is deployed.
+- If a file larger than 2 MB is uploaded, the app blocks it before saving.
+- Firestore Base64 image storage is simple for teaching, but it increases database reads and writes because one image may use multiple chunk documents.
 - If Gemini replies fail, check that `.env` contains a valid Gemini key and that `.env` is listed under `assets` in `pubspec.yaml`.
-- Do not store large Base64 images directly in Firestore. Use Storage and keep metadata in Firestore.
 - Keep the image limit at 2 MB or smaller for faster uploads and lower Firebase/Gemini usage.
 
 ## Teaching Flow For Students
@@ -231,9 +210,9 @@ After this, stop the app completely and run it again so it reloads the Firebase 
 2. Show the Firestore path `users/{uid}` so students understand per-user data isolation.
 3. Create one chat session and inspect the Firestore document.
 4. Send a text message and inspect the `messages` subcollection.
-5. Upload an image and inspect both:
-   - the Storage file,
-   - the Firestore message metadata.
+5. Upload an image and inspect:
+   - the Firestore message metadata,
+   - the `imageBase64Chunks` subcollection under that message.
 6. Explain why rules matter: users must not read or write another user's data.
 7. Demonstrate the 2 MB validation by trying a larger image.
 8. Rename and delete a chat so students see CRUD operations in action.
@@ -242,8 +221,9 @@ After this, stop the app completely and run it again so it reloads the Firebase 
 
 - Keep API keys out of source code.
 - Use Firestore for structured queryable data.
-- Use Storage for binary files.
+- For production apps, prefer Firebase Storage for large binary files. For this lesson, Base64 chunks are used because the requirement is to store image data in the database.
 - Store all user-owned data under `users/{uid}`.
 - Deploy security rules before giving the app to students.
 - Validate file type and size before upload.
 - Keep Gemini prompts and responses in the session history so each chat has context.
+

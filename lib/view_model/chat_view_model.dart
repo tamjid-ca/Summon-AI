@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:summon_ai/firebase_options.dart';
 import 'package:summon_ai/model/chat_model.dart';
 import 'package:summon_ai/service/chat_session_service.dart';
 import 'package:summon_ai/service/gemini_chat_service.dart';
@@ -117,23 +117,20 @@ class ChatViewModel extends ChangeNotifier {
 
       ChatImageAttachment? attachment;
       Uint8List? imageBytes;
-      Object? imageStorageError;
+      String? imageBase64;
       if (image != null) {
-        imageBytes = Uint8List.fromList(image.bytes);
-        try {
-          attachment = await _chatSessionService.uploadImage(
-            sessionId: sessionId,
-            fileName: image.fileName,
-            mimeType: image.mimeType,
-            bytes: imageBytes,
-          );
-        } catch (error) {
-          imageStorageError = error;
-        }
+        imageBase64 = base64Encode(image.bytes);
+        attachment = ChatImageAttachment(
+          fileName: image.fileName,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+          base64ChunkCount: _chatSessionService.base64ChunkCount(imageBase64),
+        );
+        imageBytes = base64Decode(imageBase64);
       }
 
       final history = List<ChatMessage>.from(messages);
-      await _chatSessionService.addMessage(
+      final userMessageRef = await _chatSessionService.addMessage(
         sessionId,
         ChatMessage(
           id: '',
@@ -143,6 +140,13 @@ class ChatViewModel extends ChangeNotifier {
           createdAt: DateTime.now(),
         ),
       );
+      if (imageBase64 != null && attachment != null) {
+        await _chatSessionService.saveImageBase64Chunks(
+          sessionId: sessionId,
+          messageId: userMessageRef.id,
+          base64Data: imageBase64,
+        );
+      }
 
       final reply = await _geminiChatService.sendMessage(
         history: history,
@@ -174,18 +178,27 @@ class ChatViewModel extends ChangeNotifier {
           _titleFrom(prompt, hasImage: image != null),
         );
       }
-
-      if (imageStorageError != null) {
-        errorMessage =
-            'Gemini replied, but the image was not saved in Firebase Storage. '
-            '${_friendlyFirebaseError(imageStorageError)}';
-      }
     } catch (e) {
       errorMessage = 'Chat failed: ${_friendlyFirebaseError(e)}';
     } finally {
       isSending = false;
       notifyListeners();
     }
+  }
+
+  Future<Uint8List?> imageBytesFor(ChatMessage message) async {
+    final attachment = message.attachment;
+    final sessionId = selectedSessionId;
+    if (attachment == null || sessionId == null) return null;
+    final inlineBase64 = attachment.base64Data;
+    final base64Data = inlineBase64 != null && inlineBase64.isNotEmpty
+        ? inlineBase64
+        : await _chatSessionService.loadImageBase64(
+            sessionId: sessionId,
+            messageId: message.id,
+          );
+    if (base64Data.isEmpty) return null;
+    return base64Decode(base64Data);
   }
 
   String _titleFrom(String prompt, {bool hasImage = false}) {
@@ -196,24 +209,7 @@ class ChatViewModel extends ChangeNotifier {
 
   String _friendlyFirebaseError(Object error) {
     if (error is FirebaseException) {
-      if (error.plugin == 'firebase_storage' ||
-          error.plugin == 'firebase_storage_web') {
-        if (error.code == 'object-not-found') {
-          final bucket =
-              'gs://${DefaultFirebaseOptions.currentPlatform.storageBucket}';
-          return 'Firebase Storage could not find the uploaded object. '
-              'Enable Firebase Storage for bucket "$bucket", then deploy '
-              'storage.rules for the same Firebase project.';
-        }
-        if (error.code == 'unauthorized' || error.code == 'permission-denied') {
-          return 'Firebase Storage rejected the upload. Sign in again and '
-              'deploy the storage rules.';
-        }
-        if (error.code == 'bucket-not-found') {
-          return 'Firebase Storage bucket was not found. Open Firebase '
-              'Console > Storage and create the default bucket.';
-        }
-      }
+
       return '${error.plugin}/${error.code}: ${error.message ?? error}';
     }
     return error.toString();
@@ -226,3 +222,4 @@ class ChatViewModel extends ChangeNotifier {
     super.dispose();
   }
 }
+

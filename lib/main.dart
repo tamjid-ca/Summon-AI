@@ -256,7 +256,6 @@ class _RootShell extends StatefulWidget {
 class _RootShellState extends State<_RootShell> {
   int _currentIndex = 0;
   bool _isChatOpen = false;
-  bool _isChatOpen = false;
 
   late final AIViewModel _aiViewModel = AIViewModel()..loadUserHistory();
   late final ChatViewModel _chatViewModel = ChatViewModel();

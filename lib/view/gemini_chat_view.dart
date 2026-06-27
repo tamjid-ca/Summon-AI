@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -90,7 +89,6 @@ class _GeminiChatPanelState extends State<GeminiChatPanel> {
         mimeType: file.mimeType ?? _mimeTypeFromName(file.name),
         sizeBytes: size,
         bytes: bytes,
-        base64Data: base64Encode(bytes),
       );
     });
   }
@@ -508,7 +506,10 @@ class _MessageList extends StatelessWidget {
         if (index >= viewModel.messages.length) {
           return const _TypingBubble();
         }
-        return _MessageBubble(message: viewModel.messages[index]);
+        return _MessageBubble(
+          message: viewModel.messages[index],
+          viewModel: viewModel,
+        );
       },
     );
   }
@@ -557,9 +558,13 @@ class _EmptyChat extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message});
+  const _MessageBubble({
+    required this.message,
+    required this.viewModel,
+  });
 
   final ChatMessage message;
+  final ChatViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -581,20 +586,9 @@ class _MessageBubble extends StatelessWidget {
             if (message.attachment != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  message.attachment!.downloadUrl,
-                  width: 240,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 240,
-                      padding: const EdgeInsets.all(12),
-                      color: Colors.black.withValues(alpha: 0.18),
-                      child: const Text(
-                        'Image could not be loaded from Firebase Storage.',
-                      ),
-                    );
-                  },
+                child: _StoredBase64Image(
+                  message: message,
+                  viewModel: viewModel,
                 ),
               ),
               const SizedBox(height: 10),
@@ -610,6 +604,48 @@ class _MessageBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StoredBase64Image extends StatelessWidget {
+  const _StoredBase64Image({
+    required this.message,
+    required this.viewModel,
+  });
+
+  final ChatMessage message;
+  final ChatViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: viewModel.imageBytesFor(message),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Container(
+            width: 240,
+            height: 150,
+            alignment: Alignment.center,
+            color: Colors.black.withValues(alpha: 0.18),
+            child: const CircularProgressIndicator(strokeWidth: 2),
+          );
+        }
+        final bytes = snapshot.data;
+        if (bytes == null || bytes.isEmpty || snapshot.hasError) {
+          return Container(
+            width: 240,
+            padding: const EdgeInsets.all(12),
+            color: Colors.black.withValues(alpha: 0.18),
+            child: const Text('Image could not be loaded from Firestore.'),
+          );
+        }
+        return Image.memory(
+          bytes,
+          width: 240,
+          fit: BoxFit.cover,
+        );
+      },
     );
   }
 }

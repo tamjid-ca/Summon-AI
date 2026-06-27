@@ -1,27 +1,18 @@
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:summon_ai/firebase_options.dart';
 import 'package:summon_ai/model/chat_model.dart';
 
 class ChatSessionService {
   ChatSessionService({
     FirebaseFirestore? firestore,
     FirebaseAuth? firebaseAuth,
-    FirebaseStorage? storage,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _storage = storage ??
-            FirebaseStorage.instanceFor(
-              bucket:
-                  'gs://${DefaultFirebaseOptions.currentPlatform.storageBucket}',
-            );
+        _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _firebaseAuth;
-  final FirebaseStorage _storage;
+
+  static const int base64ChunkSize = 700000;
 
   String get _uid {
     final uid = _firebaseAuth.currentUser?.uid;
@@ -71,54 +62,80 @@ class ChatSessionService {
     final messages = await _messages(sessionId).limit(100).get();
     final batch = _firestore.batch();
     for (final doc in messages.docs) {
+      final chunks = await doc.reference.collection('imageBase64Chunks').get();
+      for (final chunk in chunks.docs) {
+        batch.delete(chunk.reference);
+      }
       batch.delete(doc.reference);
     }
     batch.delete(_sessions.doc(sessionId));
     await batch.commit();
   }
 
-  Future<void> addMessage(String sessionId, ChatMessage message) async {
-    await _messages(sessionId).add(message.toMap());
+  Future<DocumentReference<Map<String, dynamic>>> addMessage(
+    String sessionId,
+    ChatMessage message,
+  ) async {
+    final doc = await _messages(sessionId).add(message.toMap());
     await _sessions.doc(sessionId).set({
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    return doc;
   }
 
-  Future<ChatImageAttachment> uploadImage({
+  Future<void> saveImageBase64Chunks({
     required String sessionId,
-    required String fileName,
-    required String mimeType,
-    required Uint8List bytes,
+    required String messageId,
+    required String base64Data,
   }) async {
-    final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-    final path =
-        'users/$_uid/chatSessions/$sessionId/images/${DateTime.now().millisecondsSinceEpoch}_$safeName';
-    final ref = _storage.ref(path);
-    final snapshot = await ref.putData(
-      bytes,
-      SettableMetadata(
-        contentType: mimeType,
-        customMetadata: {
-          'ownerUid': _uid,
-          'sessionId': sessionId,
-        },
-      ),
-    );
-    if (snapshot.state != TaskState.success) {
-      throw FirebaseException(
-        plugin: 'firebase_storage',
-        code: 'upload-incomplete',
-        message: 'Image upload did not finish successfully.',
-      );
+    final chunks = _splitBase64(base64Data);
+    final batch = _firestore.batch();
+    final collection = _messages(sessionId).doc(messageId).collection(
+          'imageBase64Chunks',
+        );
+    for (var index = 0; index < chunks.length; index++) {
+      batch.set(collection.doc(index.toString().padLeft(4, '0')), {
+        'index': index,
+        'data': chunks[index],
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     }
+    await batch.commit();
+  }
 
-    final downloadUrl = await snapshot.ref.getDownloadURL();
-    return ChatImageAttachment(
-      fileName: fileName,
-      mimeType: mimeType,
-      sizeBytes: bytes.length,
-      storagePath: path,
-      downloadUrl: downloadUrl,
+  Future<String> loadImageBase64({
+    required String sessionId,
+    required String messageId,
+  }) async {
+    final snapshot = await _messages(sessionId)
+        .doc(messageId)
+        .collection('imageBase64Chunks')
+        .orderBy('index')
+        .get();
+    return snapshot.docs.map((doc) => doc.data()['data'] as String? ?? '').join();
+  }
+
+  int base64ChunkCount(String base64Data) {
+    return _splitBase64(base64Data).length;
+  }
+
+  List<String> _splitBase64(String base64Data) {
+    final chunks = <String>[];
+    for (var start = 0; start < base64Data.length; start += base64ChunkSize) {
+      final end = (start + base64ChunkSize).clamp(0, base64Data.length) as int;
+      chunks.add(base64Data.substring(start, end));
+    }
+    return chunks;
+  }
+
+  Future<void> updateMessageAttachment({
+    required String sessionId,
+    required String messageId,
+    required ChatImageAttachment attachment,
+  }) async {
+    await _messages(sessionId).doc(messageId).set(
+      {'attachment': attachment.toMap()},
+      SetOptions(merge: true),
     );
   }
 }

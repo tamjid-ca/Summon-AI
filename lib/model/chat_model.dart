@@ -10,23 +10,23 @@ class ChatImageAttachment {
     required this.fileName,
     required this.mimeType,
     required this.sizeBytes,
-    required this.storagePath,
-    required this.downloadUrl,
+    this.base64Data,
+    this.base64ChunkCount = 0,
   });
 
   final String fileName;
   final String mimeType;
   final int sizeBytes;
-  final String storagePath;
-  final String downloadUrl;
+  final String? base64Data;
+  final int base64ChunkCount;
 
   factory ChatImageAttachment.fromMap(Map<String, dynamic> map) {
     return ChatImageAttachment(
       fileName: map['fileName'] as String? ?? 'image',
       mimeType: map['mimeType'] as String? ?? 'image/jpeg',
       sizeBytes: map['sizeBytes'] as int? ?? 0,
-      storagePath: map['storagePath'] as String? ?? '',
-      downloadUrl: map['downloadUrl'] as String? ?? '',
+      base64Data: map['base64Data'] as String?,
+      base64ChunkCount: map['base64ChunkCount'] as int? ?? 0,
     );
   }
 
@@ -35,8 +35,8 @@ class ChatImageAttachment {
       'fileName': fileName,
       'mimeType': mimeType,
       'sizeBytes': sizeBytes,
-      'storagePath': storagePath,
-      'downloadUrl': downloadUrl,
+      if (base64Data != null) 'base64Data': base64Data,
+      if (base64ChunkCount > 0) 'base64ChunkCount': base64ChunkCount,
     };
   }
 }
@@ -119,12 +119,11 @@ class PendingChatImage {
     required this.mimeType,
     required this.sizeBytes,
     required this.bytes,
-    required this.base64Data,
   });
 
   final String fileName;
   final String mimeType;
   final int sizeBytes;
   final List<int> bytes;
-  final String base64Data;
 }
+
