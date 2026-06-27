@@ -1,11 +1,19 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:summon_ai/model/ai_model.dart';
 import 'package:summon_ai/view_model/ai_view_model.dart';
 
 class SummonAIView extends StatefulWidget {
   final AIViewModel viewModel;
+  final User user;
+  final Future<void> Function() onSignOut;
 
-  const SummonAIView({super.key, required this.viewModel});
+  const SummonAIView({
+    super.key,
+    required this.viewModel,
+    required this.user,
+    required this.onSignOut,
+  });
 
   @override
   State<SummonAIView> createState() => _SummonAIViewState();
@@ -137,6 +145,19 @@ class _SummonAIViewState extends State<SummonAIView>
         ],
       ),
       actions: [
+        Tooltip(
+          message: widget.user.email ?? 'Signed in',
+          child: CircleAvatar(
+            radius: 14,
+            backgroundImage: widget.user.photoURL == null
+                ? null
+                : NetworkImage(widget.user.photoURL!),
+            child: widget.user.photoURL == null
+                ? const Icon(Icons.person, size: 16)
+                : null,
+          ),
+        ),
+        const SizedBox(width: 4),
         if (widget.viewModel.jokeHistory.isNotEmpty)
           IconButton(
             onPressed: () {
@@ -146,6 +167,11 @@ class _SummonAIViewState extends State<SummonAIView>
             icon: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFB0B0C8)),
             tooltip: 'Clear history',
           ),
+        IconButton(
+          onPressed: widget.onSignOut,
+          icon: const Icon(Icons.logout_rounded, color: Color(0xFFB0B0C8)),
+          tooltip: 'Sign out',
+        ),
         const SizedBox(width: 8),
       ],
     );
