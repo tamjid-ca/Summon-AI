@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:summon_ai/model/chat_message.dart';
 import 'package:summon_ai/view_model/gemini_chat_view_model.dart';
 
@@ -601,14 +602,49 @@ class _GeminiChatOverlayState extends State<GeminiChatOverlay>
                   width: 1,
                 ),
         ),
-        child: Text(
-          message.text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14.5,
-            height: 1.4,
-          ),
-        ),
+        child: isUser
+            ? SelectableText(
+                message.text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14.5,
+                  height: 1.4,
+                ),
+              )
+            : MarkdownBody(
+                data: message.text,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontSize: 14.5,
+                    height: 1.5,
+                  ),
+                  h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.6),
+                  h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, height: 1.5),
+                  h3: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, height: 1.5),
+                  code: TextStyle(
+                    color: const Color(0xFF00F2FE),
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    fontFamily: 'monospace',
+                    fontSize: 13.5,
+                  ),
+                  codeblockPadding: const EdgeInsets.all(12),
+                  codeblockDecoration: BoxDecoration(
+                    color: const Color(0xFF070714),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  blockquoteDecoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(6),
+                    border: const Border(
+                      left: BorderSide(color: Color(0xFF7B2FBE), width: 3),
+                    ),
+                  ),
+                  listBullet: const TextStyle(color: Color(0xFF00F2FE), fontSize: 14.5),
+                ),
+              ),
       ),
     );
   }
@@ -641,14 +677,15 @@ class _GeminiChatOverlayState extends State<GeminiChatOverlay>
               color: Color(0xFF00F2FE),
             ),
             const SizedBox(width: 8),
-            Text(
-              'Gemini is thinking...',
+            const Text(
+              'Gemini is thinking',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: Colors.white,
                 fontSize: 13,
-                fontStyle: FontStyle.italic,
               ),
             ),
+            const SizedBox(width: 4),
+            const _BouncingDotsOverlay(),
           ],
         ),
       ),
@@ -724,6 +761,59 @@ class _GeminiChatOverlayState extends State<GeminiChatOverlay>
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BouncingDotsOverlay extends StatefulWidget {
+  const _BouncingDotsOverlay();
+
+  @override
+  State<_BouncingDotsOverlay> createState() => _BouncingDotsOverlayState();
+}
+
+class _BouncingDotsOverlayState extends State<_BouncingDotsOverlay> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final delay = index * 0.2;
+            double progress = (_controller.value - delay) % 1.0;
+            double scale = 0.4 + 0.6 * math.sin(progress * math.pi);
+            if (scale < 0.4) scale = 0.4;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: scale),
+                shape: BoxShape.circle,
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }

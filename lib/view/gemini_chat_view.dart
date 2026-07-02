@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:summon_ai/model/chat_model.dart';
 import 'package:summon_ai/view_model/chat_view_model.dart';
@@ -594,13 +596,48 @@ class _MessageBubble extends StatelessWidget {
               const SizedBox(height: 10),
             ],
             if (message.text.trim().isNotEmpty)
-              SelectableText(
-                message.text,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  height: 1.45,
-                ),
-              ),
+              isUser
+                  ? SelectableText(
+                      message.text,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        height: 1.45,
+                      ),
+                    )
+                  : MarkdownBody(
+                      data: message.text,
+                      selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 14.5,
+                          height: 1.5,
+                        ),
+                        h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, height: 1.6),
+                        h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, height: 1.5),
+                        h3: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold, height: 1.5),
+                        code: TextStyle(
+                          color: const Color(0xFF00F2FE),
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          fontFamily: 'monospace',
+                          fontSize: 13.5,
+                        ),
+                        codeblockPadding: const EdgeInsets.all(12),
+                        codeblockDecoration: BoxDecoration(
+                          color: const Color(0xFF070714),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(6),
+                          border: const Border(
+                            left: BorderSide(color: Color(0xFF7B2FBE), width: 3),
+                          ),
+                        ),
+                        listBullet: const TextStyle(color: Color(0xFF00F2FE), fontSize: 14.5),
+                      ),
+                    ),
           ],
         ),
       ),
@@ -659,24 +696,83 @@ class _TypingBubble extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF181A31),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+            const Icon(
+              Icons.auto_awesome,
+              size: 14,
+              color: Color(0xFF00F2FE),
             ),
-            SizedBox(width: 10),
-            Text('Gemini is thinking...'),
+            const SizedBox(width: 8),
+            const Text(
+              'Gemini is thinking',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(width: 4),
+            const _BouncingDots(),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BouncingDots extends StatefulWidget {
+  const _BouncingDots();
+
+  @override
+  State<_BouncingDots> createState() => _BouncingDotsState();
+}
+
+class _BouncingDotsState extends State<_BouncingDots> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final delay = index * 0.2;
+            double progress = (_controller.value - delay) % 1.0;
+            double scale = 0.4 + 0.6 * math.sin(progress * math.pi);
+            if (scale < 0.4) scale = 0.4;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+              width: 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: scale),
+                shape: BoxShape.circle,
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }

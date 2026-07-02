@@ -8,11 +8,9 @@ import 'package:summon_ai/service/user_data_service.dart';
 import 'package:summon_ai/view/gemini_chat_view.dart';
 import 'package:summon_ai/view/summon_ai_view.dart';
 import 'package:summon_ai/view/weather_view.dart';
-import 'package:summon_ai/view/gemini_chat_overlay.dart';
 import 'package:summon_ai/view_model/ai_view_model.dart';
 import 'package:summon_ai/view_model/chat_view_model.dart';
 import 'package:summon_ai/view_model/weather_view_model.dart';
-import 'package:summon_ai/view_model/gemini_chat_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,12 +21,16 @@ Future<void> main() async {
 
 Future<bool> _initializeFirebase() async {
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     return true;
   } on UnsupportedError {
     return false;
+  } catch (e) {
+    return Firebase.apps.isNotEmpty;
   }
 }
 
